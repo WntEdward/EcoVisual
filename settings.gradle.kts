@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Insta Lens"
+rootProject.name = "Eco Visual"
 include(":app")
  
