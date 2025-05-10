@@ -1,7 +1,7 @@
 VERSION PERSONALIZADA DE EL PROYECTO "INSTALENS"
 Se uso como base el repositorio "InstaLens" para la creacion de la aplicacion de deteccion de entorno por nombre "Ecovisual"
 
-
+#Preubas con el repositiorio
 
 
 # InstaLens: Real-Time Object Detection Android App
