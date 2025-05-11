@@ -161,43 +161,7 @@ fun HomeScreen() {
                     .padding(top = Dimens.Padding8dp),
                 verticalArrangement = Arrangement.SpaceAround
             ) {
-                ImageButton(
-                    drawableResourceId = R.drawable.ic_capture,
-                    contentDescriptionResourceId = R.string.capture_button_description,
-                    modifier = Modifier
-                        .size(Dimens.CaptureButtonSize)
-                        .clip(CircleShape)
-                        .align(Alignment.CenterHorizontally)
-                        .clickable {
-                            // Capture and Saves Photo
-                            viewModel.capturePhoto(
-                                context = context,
-                                cameraController = cameraController,
-                                screenWidth,
-                                screenHeight,
-                                detections
-                            )
 
-                            // Show toast of Save State
-                            if (isImageSavedStateFlow) {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        R.string.success_image_saved_message,
-                                        Toast.LENGTH_SHORT
-                                    )
-                                    .show()
-                            } else {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        R.string.error_image_saved_message,
-                                        Toast.LENGTH_SHORT
-                                    )
-                                    .show()
-                            }
-                        }
-                )
 
                 // Threshold Level Slider
                 val sliderValue = remember { mutableFloatStateOf(Constants.INITIAL_CONFIDENCE_SCORE) }
@@ -220,21 +184,8 @@ fun HomeScreen() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Rotate Camera Composable
-                ImageButton(
-                    drawableResourceId = R.drawable.ic_rotate_camera,
-                    contentDescriptionResourceId = R.string.rotate_camera_button_description,
-                    Modifier
-                        .padding(
-                            top = Dimens.Padding24dp,
-                            start = Dimens.Padding16dp
-                        )
-                        .size(Dimens.RotateCameraButtonSize)
-                        .clickable {
-                            cameraController.cameraSelector =
-                                viewModel.getSelectedCamera(cameraController)
-                        }
-                )
+
+
 
                 // Detected Object Count Composable
                 ObjectCounter(objectCount = detections.size)
