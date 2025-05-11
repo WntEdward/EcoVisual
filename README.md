@@ -1,7 +1,7 @@
 VERSION PERSONALIZADA DE EL PROYECTO "INSTALENS"
 Se uso como base el repositorio "InstaLens" para la creacion de la aplicacion de deteccion de entorno por nombre "Ecovisual"
 
-#Preubas con el repositiorio
+#Preubas con el repositiorio (verificacion de cambios)
 
 
 # InstaLens: Real-Time Object Detection Android App
@@ -54,51 +54,6 @@ However, the same scaling technique applied to address Challenge-2 did not work 
 # InstaLens: Real-Time Object Detection Android App
 
 InstaLens is an advanced object detection mobile application that leverages the power of TensorFlow Lite to identify objects in real-time through the device's camera. It's built for Android and includes several features and customizations that provide users with a seamless and interactive object detection experience.
-
-## Screenshots
-
-<table>
-   <tr>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/f27ec107-8d54-4dbc-88d1-c6ce73d987ef" width="400" />
-    </td>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/ee0dc990-e1e5-46d2-8ef2-a2f9fab0d23a" width="400" />
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/1b8697f7-3875-48e0-b470-95ee73a3a132" width="400" />
-    </td>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/b713674d-ef0e-4729-b53d-8b1a6456609c" width="400" />
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/20853da5-3440-4bfc-a440-edc1c1667fbe" width="400" />
-    </td>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/e1888079-4db2-4bfc-aa6a-050ebdaab961" width="400" />
-    </td>
-  </tr>
-     <tr>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/0c103440-6cd9-47a8-8c86-e4a5f1426e37" width="400" />
-    </td>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/9c037741-44b2-487b-ae7c-2c86b8bbab60" width="400" />
-    </td>
-  </tr>
-   <tr>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/e3169c0c-82eb-4423-b6dd-a8079607a675" width="400" />
-    </td>
-    <td>
-      <img src="https://github.com/ranitraj/instaLens/assets/15179100/334e7970-f90a-4c0e-97b2-0177f2c0f29d" width="400" />
-    </td>
-  </tr>
-</table>
 
 
 ## Features
