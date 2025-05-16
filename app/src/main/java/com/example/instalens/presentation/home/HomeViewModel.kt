@@ -38,17 +38,30 @@ import java.lang.Float.max
 import java.lang.Float.min
 import javax.inject.Inject
 import kotlin.random.Random
+import android.speech.tts.TextToSpeech
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val objectDetectionManager: ObjectDetectionManager
-): ViewModel() {
+) : ViewModel(), TextToSpeech.OnInitListener {
     companion object {
         private val TAG: String? = HomeViewModel::class.simpleName
     }
 
+    val detections: Any
+        get() {
+            TODO()
+        }
     private val _isImageSavedStateFlow = MutableStateFlow(true)
     val isImageSavedStateFlow = _isImageSavedStateFlow.asStateFlow()
+
+    lateinit var textToSpeech: TextToSpeech
+    private var lastAnnouncedTime = 0L
+    private val announcementCooldown = 3000L // 3 segundos entre anuncios
+
+    // Estados para vibración
+    private val _vibrationState = MutableStateFlow(false)
+    val vibrationState = _vibrationState.asStateFlow()
 
     /**
      * Initializes and returns a `LifecycleCameraController` instance with the specified use cases.
@@ -71,6 +84,7 @@ class HomeViewModel @Inject constructor(
                 ContextCompat.getMainExecutor(context),
                 cameraFrameAnalyzer
             )
+            textToSpeech = TextToSpeech(context, this@HomeViewModel)
         }
     }
 
@@ -110,7 +124,7 @@ class HomeViewModel @Inject constructor(
     ) {
         cameraController.takePicture(
             ContextCompat.getMainExecutor(context),
-            object: ImageCapture.OnImageCapturedCallback() {
+            object : ImageCapture.OnImageCapturedCallback() {
 
                 override fun onCaptureSuccess(image: ImageProxy) {
                     super.onCaptureSuccess(image)
@@ -126,7 +140,7 @@ class HomeViewModel @Inject constructor(
 //                            if (selectedCamera == CameraSelector.DEFAULT_FRONT_CAMERA) {
 //                                postScale(-1f, 1f)
 //                            }
-                    }
+                        }
 
                     // Creating a new Bitmap via createBitmap using 'rotatedImageMatrix'
                     val rotatedBitmap: Bitmap = Bitmap.createBitmap(
@@ -161,7 +175,6 @@ class HomeViewModel @Inject constructor(
             }
         )
     }
-
 
     /**
      * Saves the provided bitmap to the device's external storage.
@@ -215,7 +228,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-
     /**
      * Updates the state flow with the status of whether the photo has been successfully saved or not.
      *
@@ -225,7 +237,6 @@ class HomeViewModel @Inject constructor(
         Log.d(TAG, "isPhotoSuccessfullySaved() called with: isSaved Flag = $isSaved")
         _isImageSavedStateFlow.value = isSaved
     }
-
 
     /**
      * Returns the current system time in a formatted string, prepended with "IMG_".
@@ -273,7 +284,6 @@ class HomeViewModel @Inject constructor(
         }
         return overlayBitmap
     }
-
 
     /**
      * Draws a detection box around a detected object on a bitmap.
@@ -370,4 +380,60 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            textToSpeech.language = Locale.getDefault()
+            textToSpeech.setSpeechRate(0.9f)
+        }
+    }
+
+    /**
+     * Anuncia obstáculos por voz
+     */
+    private fun announceObstacle(detection: Detection) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastAnnouncedTime > announcementCooldown) {
+            val message = when {
+                detection.detectedObjectName.contains("person") -> "Persona adelante"
+                detection.detectedObjectName.contains("car") -> "Vehículo cerca"
+                detection.detectedObjectName.contains("chair") -> "Silla en el camino"
+                detection.confidenceScore > 0.7 -> "Obstáculo importante adelante"
+                else -> "Obstáculo detectado"
+            }
+
+            textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, null)
+            lastAnnouncedTime = currentTime
+
+            // Activar vibración para obstáculos importantes
+            if (detection.confidenceScore > 0.7) {
+                _vibrationState.value = true
+            }
+        }
+    }
+
+    /**
+     * Procesa las detecciones y anuncia obstáculos
+     */
+    fun processDetections(detections: List<Detection>) {
+        detections.forEach { detection ->
+            // Solo anunciar objetos con alta probabilidad y en posición central
+            if (detection.confidenceScore > 0.6 && isCentralObstacle(detection.boundingBox)) {
+                announceObstacle(detection)
+            }
+        }
+    }
+
+    /**
+     * Determina si el obstáculo está en la zona central del camino
+     */
+    private fun isCentralObstacle(boundingBox: RectF): Boolean {
+        val centerX = (boundingBox.left + boundingBox.right) / 2
+        return centerX > 0.3f && centerX < 0.7f // Zona central del 30% al 70%
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        textToSpeech.stop()
+        textToSpeech.shutdown()
+    }
 }

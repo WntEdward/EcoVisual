@@ -17,4 +17,9 @@ data class Detection(
     val confidenceScore: Float,
     val tensorImageHeight: Int,
     val tensorImageWidth: Int,
-)
+) {
+    val category: String
+        get() {
+            TODO()
+        }
+}

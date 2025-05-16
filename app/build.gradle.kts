@@ -90,7 +90,7 @@ dependencies {
 
     // Tensorflow-Lite Dependencies
     implementation("org.tensorflow:tensorflow-lite-task-vision:$tfLiteVersion")
-    implementation("org.tensorflow:tensorflow-lite-gpu-delegate-plugin:$tfLiteVersion")
+
     implementation("org.tensorflow:tensorflow-lite-gpu:2.9.0")
 
     // Camera-X Dependencies
@@ -100,6 +100,12 @@ dependencies {
     implementation("androidx.camera:camera-video:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
     implementation("androidx.camera:camera-extensions:$cameraxVersion")
+
+    //Vibration
+    implementation ("androidx.core:core-ktx:1.8.0")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.5.1")
+
+
 
     // Accompanist Permission manager Dependency
     implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")

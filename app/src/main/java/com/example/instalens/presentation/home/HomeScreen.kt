@@ -1,39 +1,32 @@
 package com.example.instalens.presentation.home
 
+import android.content.Context
 import android.graphics.RectF
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.instalens.R
 import com.example.instalens.data.manager.objectDetection.ObjectDetectionManagerImpl
 import com.example.instalens.domain.model.Detection
 import com.example.instalens.presentation.home.components.CameraOverlay
 import com.example.instalens.presentation.home.components.CameraPreview
-import com.example.instalens.presentation.home.components.ObjectCounter
 import com.example.instalens.presentation.home.components.RequestPermissions
-import com.example.instalens.presentation.utils.Dimens
 import com.example.instalens.utils.CameraFrameAnalyzer
 import com.example.instalens.utils.Constants
 import com.example.instalens.utils.ImageScalingUtils
@@ -45,82 +38,62 @@ fun HomeScreen() {
 
     RequestPermissions()
 
-    val isImageSavedStateFlow by viewModel.isImageSavedStateFlow.collectAsState()
-    val previewSizeState = remember { mutableStateOf(IntSize(0, 0)) }
-    val boundingBoxCoordinatesState = remember { mutableStateListOf<RectF>() }
+    val previewSizeState = remember { mutableStateOf(androidx.compose.ui.unit.IntSize(0, 0)) }
     val confidenceScoreState = remember { mutableFloatStateOf(Constants.INITIAL_CONFIDENCE_SCORE) }
 
     var scaleFactorX = 1f
     var scaleFactorY = 1f
 
-    val screenWidth = LocalContext.current.resources.displayMetrics.widthPixels * 1f
-    val screenHeight = LocalContext.current.resources.displayMetrics.heightPixels * 1f
+    var detections by remember { mutableStateOf(emptyList<Detection>()) }
+
+    val cameraFrameAnalyzer = remember {
+        CameraFrameAnalyzer(
+            objectDetectionManager = ObjectDetectionManagerImpl(context = context),
+            onObjectDetectionResults = { newDetections ->
+                detections = newDetections
+                viewModel.processDetections(newDetections)
+            },
+            confidenceScoreState = confidenceScoreState,
+            context = context
+        )
+    }
+
+    val cameraController = remember {
+        viewModel.prepareCameraController(
+            context,
+            cameraFrameAnalyzer
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        var detections by remember { mutableStateOf(emptyList<Detection>()) }
-
-        LaunchedEffect(detections) {}
-
-        val cameraFrameAnalyzer = remember {
-            CameraFrameAnalyzer(
-                objectDetectionManager = ObjectDetectionManagerImpl(context = context),
-                onObjectDetectionResults = {
-                    detections = it
-                    boundingBoxCoordinatesState.clear()
-                    detections.forEach { detection ->
-                        boundingBoxCoordinatesState.add(detection.boundingBox)
-                    }
-                },
-                confidenceScoreState = confidenceScoreState
-            )
-        }
-
-        val cameraController = remember {
-            viewModel.prepareCameraController(
-                context,
-                cameraFrameAnalyzer
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = colorResource(id = R.color.gray_900)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                CameraPreview(
-                    controller = remember { cameraController },
-                    modifier = Modifier.fillMaxSize(),
-                    onPreviewSizeChanged = { newSize ->
-                        previewSizeState.value = newSize
-                        val scaleFactors = ImageScalingUtils.getScaleFactors(
-                            newSize.width,
-                            newSize.height
-                        )
-                        scaleFactorX = scaleFactors[0]
-                        scaleFactorY = scaleFactors[1]
-                        Log.d("HomeViewModel", "Scale factors: X=$scaleFactorX, Y=$scaleFactorY")
-                    }
+        CameraPreview(
+            controller = cameraController,
+            modifier = Modifier.fillMaxSize(),
+            onPreviewSizeChanged = { newSize ->
+                previewSizeState.value = newSize
+                val scaleFactors = ImageScalingUtils.getScaleFactors(
+                    newSize.width,
+                    newSize.height
                 )
-                CameraOverlay(detections = detections)
+                scaleFactorX = scaleFactors[0]
+                scaleFactorY = scaleFactors[1]
+                Log.d("HomeViewModel", "Scale factors: X=$scaleFactorX, Y=$scaleFactorY")
             }
-        }
+        )
+        CameraOverlay(detections = detections)
 
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .zIndex(1f)
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                .padding(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                ObjectCounter(objectCount = detections.size)
-            }
+            Text(
+                text = "Modo asistencia activo",
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
