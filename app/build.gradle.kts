@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.assistantapp"
+        applicationId = "com.example.EcoVisual"
         minSdk = 27
         targetSdk = 34
         versionCode = 1

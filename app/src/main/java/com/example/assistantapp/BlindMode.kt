@@ -111,7 +111,7 @@ fun BlindModeScreen() {
         }
     }
 
-    // Text-to-Speech setup
+    // Text-to-Speech
     val tts = remember { mutableStateOf<TextToSpeech?>(null) }
     LaunchedEffect(context) {
         tts.value = TextToSpeech(context) { status ->
