@@ -116,7 +116,7 @@ fun BlindModeScreen() {
     LaunchedEffect(context) {
         tts.value = TextToSpeech(context) { status ->
             if (status != TextToSpeech.ERROR) {
-                tts.value?.language = Locale.US
+                tts.value?.language = Locale("es", "MX")
                 tts.value?.setSpeechRate(1.5f) // Increase the speech rate
 
                 // Set a specific voice (e.g., female voice)

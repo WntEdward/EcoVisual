@@ -53,7 +53,7 @@ fun MainPage(navController: NavHostController) {
     DisposableEffect(Unit) {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale.US
+                tts?.language = Locale("es", "MX")
                 tts?.speak(
                     "Da un click en cualquier parte de la pantalla para las instrucciones. Manten presionado para la hora",
                     TextToSpeech.QUEUE_FLUSH,
