@@ -1,4 +1,4 @@
-# EcoVisual - Asistente de Navegación para Personas con Discapacidad Visual
+# EcoVisual - Asistente de Navegación para Personas con Discapacidad Visual usando vision por IA
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
