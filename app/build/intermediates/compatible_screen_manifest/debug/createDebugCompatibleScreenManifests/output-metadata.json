@@ -4,7 +4,7 @@
     "type": "COMPATIBLE_SCREEN_MANIFEST",
     "kind": "Directory"
   },
-  "applicationId": "com.example.assistantapp",
+  "applicationId": "com.example.EcoVisual",
   "variantName": "debug",
   "elements": []
 }

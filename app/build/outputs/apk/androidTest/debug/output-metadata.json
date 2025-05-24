@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.example.assistantapp.test",
+  "applicationId": "com.example.EcoVisual.test",
   "variantName": "debugAndroidTest",
   "elements": [
     {

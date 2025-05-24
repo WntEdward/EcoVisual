@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.example.assistantapp",
+  "applicationId": "com.example.EcoVisual",
   "variantName": "debug",
   "elements": [
     {
