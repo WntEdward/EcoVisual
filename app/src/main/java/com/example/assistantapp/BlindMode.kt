@@ -68,8 +68,8 @@ fun ReadingModeCamera(
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
 
-        // Capture image once when reading mode is activated
-        val file = createTempFile(context.toString()) // Create a temporary file
+
+        val file = createTempFile(context.toString())
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
         imageCapture.takePicture(
             outputOptions,
@@ -77,11 +77,11 @@ fun ReadingModeCamera(
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                    onImageCaptured(bitmap) // Pass the captured bitmap to the callback
+                    onImageCaptured(bitmap)
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    // Handle error
+
                     exception.printStackTrace()
                 }
             }
@@ -98,11 +98,11 @@ fun BlindModeScreen() {
     }
     val scope = rememberCoroutineScope()
 
-    // Haptic feedback patterns
+
     val assistantModeVibrationPattern = longArrayOf(0, 200, 100, 200) // Short vibration twice
     val readingModeVibrationPattern = longArrayOf(0, 500) // Long vibration once
 
-    // Function to trigger vibrations
+
     fun triggerVibration(pattern: LongArray) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
@@ -117,9 +117,9 @@ fun BlindModeScreen() {
         tts.value = TextToSpeech(context) { status ->
             if (status != TextToSpeech.ERROR) {
                 tts.value?.language = Locale("es", "MX")
-                tts.value?.setSpeechRate(1.5f) // Increase the speech rate
+                tts.value?.setSpeechRate(1.5f)
 
-                // Set a specific voice (e.g., female voice)
+
                 val availableVoices = tts.value?.voices
                 val desiredVoice = availableVoices?.find { voice ->
                     voice.name.contains("female", ignoreCase = true)
@@ -131,7 +131,7 @@ fun BlindModeScreen() {
         }
     }
 
-    // Camera and permissions
+
     var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     var hasPermission by remember {
@@ -147,7 +147,7 @@ fun BlindModeScreen() {
         )
     }
 
-    // Modes and states
+
     var currentMode by remember { mutableStateOf("navigation") }
     var isAssistantMode by remember { mutableStateOf(false) }
     var isReadingMode by remember { mutableStateOf(false) }
@@ -158,9 +158,9 @@ fun BlindModeScreen() {
     var analysisResult by remember { mutableStateOf("") }
     var lastSpokenIndex by remember { mutableStateOf(0) }
     var lastProcessedTimestamp by remember { mutableStateOf(0L) }
-    val frameInterval = 12000 // Process a frame every 6.5 seconds
+    val frameInterval = 12000
 
-    // Speech recognition
+
     val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
     val speechIntent = remember {
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -169,7 +169,6 @@ fun BlindModeScreen() {
         }
     }
 
-    // Speech recognition listener
     LaunchedEffect(Unit) {
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle?) {
@@ -202,7 +201,7 @@ fun BlindModeScreen() {
         })
     }
 
-    // Handle microphone activation when navigation is paused
+
     LaunchedEffect(navigationPaused) {
         if (navigationPaused) {
             isMicActive = true
@@ -214,7 +213,6 @@ fun BlindModeScreen() {
         }
     }
 
-    // Request permissions if not granted
     if (!hasPermission) {
         ActivityCompat.requestPermissions(
             (context as Activity),
@@ -223,7 +221,7 @@ fun BlindModeScreen() {
         )
     }
 
-    // Main UI
+
     Column(
         modifier = Modifier
             .fillMaxSize()

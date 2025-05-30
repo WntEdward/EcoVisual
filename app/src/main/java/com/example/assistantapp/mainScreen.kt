@@ -189,8 +189,8 @@ fun MainPage(navController: NavHostController) {
             textAlign = TextAlign.Center,
             fontSize = 14.sp,
             modifier = Modifier
-                .align(Alignment.BottomCenter) // Correctly place at the bottom
-                .padding(bottom = 16.dp) // Optional padding
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
         )
     }
 }
