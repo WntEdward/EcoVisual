@@ -1,8 +1,11 @@
 package com.example.assistantapp
+
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -53,8 +56,37 @@ fun MainPage(navController: NavHostController) {
     DisposableEffect(Unit) {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale("es", "MX")
-                tts?.speak(
+                val textToSpeech = tts!!
+                // Get the list of available voices
+                val voices = textToSpeech.getVoices()
+
+                // Print all available voices to log for debugging
+                for (voice in voices) {
+                    Log.d("TTS", "Voice: ${voice.name}, Language: ${voice.locale.language}, Country: ${voice.locale.country}")
+                }
+
+                // Find a Spanish male voice
+                var selectedVoice: Voice? = null
+                for (voice in voices) {
+                    if (voice.locale.language == "es" && voice.name.contains("male")) {
+                        selectedVoice = voice
+                        break
+                    }
+                }
+
+                // If a male Spanish voice is found, set it
+                if (selectedVoice != null) {
+                    textToSpeech.setVoice(selectedVoice)
+                    Log.d("TTS", "Selected voice: ${selectedVoice.name}")
+                } else {
+                    Log.d("TTS", "No male Spanish voice found, using default")
+                }
+
+                // Set language to Spanish Mexico
+                textToSpeech.setLanguage(Locale("es", "MX"))
+
+                // Speak initial message
+                textToSpeech.speak(
                     "Da un click en cualquier parte de la pantalla para las instrucciones. Manten presionado para la hora",
                     TextToSpeech.QUEUE_FLUSH,
                     null,
@@ -86,7 +118,7 @@ fun MainPage(navController: NavHostController) {
             "instrucciones de uso " +
                     "Doble tap a la pantalla para cambiar de modo " +
                     "en el segundo modo puedes preguntar sobre detalles de lo que hay enfrente " +
-                    "presiona latgo la pantalla para saber la hora" +
+                    "presiona largo la pantalla para saber la hora" +
                     "Doble click a la pantalla para continuar",
             TextToSpeech.QUEUE_FLUSH,
             null,
@@ -100,7 +132,6 @@ fun MainPage(navController: NavHostController) {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         navController.navigate("blindMode")
     }
-
 
     LaunchedEffect(tapCount) {
         when (tapCount) {
@@ -134,12 +165,12 @@ fun MainPage(navController: NavHostController) {
             delay(60000)
         }
     }
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize() // Ensures full-screen usage
-        .background(Color(0xFFF4F4F4)) // Set background to #f4f4f4
+        modifier = Modifier.fillMaxSize()
+            .background(Color(0xFFF4F4F4))
     ) {
-        // Background image with full viewport height
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(R.drawable.mainscreen)
@@ -148,11 +179,10 @@ fun MainPage(navController: NavHostController) {
                 .build(),
             contentDescription = "Animated blind man",
             modifier = Modifier
-                .fillMaxHeight(0.8f), // Ensure the background fills the entire screen
-            contentScale = ContentScale.Crop // Crop to fill the viewport properly
+                .fillMaxHeight(0.8f),
+            contentScale = ContentScale.Crop
         )
 
-        // Application logo at the top
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(R.drawable.nav)
@@ -169,7 +199,6 @@ fun MainPage(navController: NavHostController) {
             contentScale = ContentScale.Fit
         )
 
-        // Clickable overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -181,7 +210,6 @@ fun MainPage(navController: NavHostController) {
                     }
                 )
         )
-
 
         Text(
             text = "EcoVisual: Aplicacion de deteccion de obstaculos",
