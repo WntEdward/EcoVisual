@@ -37,9 +37,10 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.io.File
+import android.content.SharedPreferences
+import androidx.navigation.NavHostController
 
 @Composable
 fun ReadingModeCamera(
@@ -68,7 +69,6 @@ fun ReadingModeCamera(
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
 
-
         val file = createTempFile(context.toString())
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
         imageCapture.takePicture(
@@ -81,7 +81,6 @@ fun ReadingModeCamera(
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-
                     exception.printStackTrace()
                 }
             }
@@ -90,18 +89,19 @@ fun ReadingModeCamera(
 
     AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
 }
+
 @Composable
-fun BlindModeScreen() {
+fun BlindModeScreen(navController: NavHostController) {
     val context = LocalContext.current
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
     val scope = rememberCoroutineScope()
-
+    val prefs = context.getSharedPreferences("EcoVisualPrefs", Context.MODE_PRIVATE)
+    val isPremium = prefs.getBoolean("isPremium", false)
 
     val assistantModeVibrationPattern = longArrayOf(0, 200, 100, 200) // Short vibration twice
     val readingModeVibrationPattern = longArrayOf(0, 500) // Long vibration once
-
 
     fun triggerVibration(pattern: LongArray) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -118,8 +118,6 @@ fun BlindModeScreen() {
             if (status != TextToSpeech.ERROR) {
                 tts.value?.language = Locale("es", "MX")
                 tts.value?.setSpeechRate(1.5f)
-
-
                 val availableVoices = tts.value?.voices
                 val desiredVoice = availableVoices?.find { voice ->
                     voice.name.contains("female", ignoreCase = true)
@@ -130,7 +128,6 @@ fun BlindModeScreen() {
             }
         }
     }
-
 
     var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -147,7 +144,6 @@ fun BlindModeScreen() {
         )
     }
 
-
     var currentMode by remember { mutableStateOf("navigation") }
     var isAssistantMode by remember { mutableStateOf(false) }
     var isReadingMode by remember { mutableStateOf(false) }
@@ -159,7 +155,6 @@ fun BlindModeScreen() {
     var lastSpokenIndex by remember { mutableStateOf(0) }
     var lastProcessedTimestamp by remember { mutableStateOf(0L) }
     val frameInterval = 12000
-
 
     val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
     val speechIntent = remember {
@@ -201,7 +196,6 @@ fun BlindModeScreen() {
         })
     }
 
-
     LaunchedEffect(navigationPaused) {
         if (navigationPaused) {
             isMicActive = true
@@ -221,56 +215,60 @@ fun BlindModeScreen() {
         )
     }
 
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        // Double tap for assistant mode
                         triggerVibration(assistantModeVibrationPattern)
                         if (!isReadingMode) {
-                            navigationPaused = !navigationPaused
-                            isAssistantMode = navigationPaused
-                            if (navigationPaused) {
-                                tts.value?.stop()
-                                currentMode = "assistant"
-                                tts.value?.speak("modo asistencia activo", TextToSpeech.QUEUE_FLUSH, null, null)
+                            if (isPremium) {
+                                navigationPaused = !navigationPaused
+                                isAssistantMode = navigationPaused
+                                if (navigationPaused) {
+                                    tts.value?.stop()
+                                    currentMode = "assistant"
+                                    tts.value?.speak("modo asistencia activo", TextToSpeech.QUEUE_FLUSH, null, null)
+                                } else {
+                                    tts.value?.stop()
+                                    currentMode = "navigation"
+                                    chatResponse = ""
+                                    tts.value?.speak("modo asistencia desactivado", TextToSpeech.QUEUE_FLUSH, null, null)
+                                }
                             } else {
-                                tts.value?.stop()
-                                currentMode = "navigation"
-                                chatResponse = ""
-                                tts.value?.speak("modo asistencia desactivado", TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak("Modo asistencia requiere Premium", TextToSpeech.QUEUE_FLUSH, null, null)
                             }
                         }
                     },
                     onLongPress = {
-                        // Long press for reading mode
                         triggerVibration(readingModeVibrationPattern)
                         if (!isAssistantMode) {
-                            isReadingMode = !isReadingMode
-                            if (isReadingMode) {
-                                tts.value?.stop()
-                                currentMode = "reading"
-                                navigationPaused = true
-                                tts.value?.speak("modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
+                            if (isPremium) {
+                                isReadingMode = !isReadingMode
+                                if (isReadingMode) {
+                                    tts.value?.stop()
+                                    currentMode = "reading"
+                                    navigationPaused = true
+                                    tts.value?.speak("modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
+                                } else {
+                                    tts.value?.stop()
+                                    currentMode = "navigation"
+                                    readingModeResult = ""
+                                    navigationPaused = false
+                                    tts.value?.speak("salida del modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
+                                }
                             } else {
-                                tts.value?.stop()
-                                currentMode = "navigation"
-                                readingModeResult = ""
-                                navigationPaused = false
-                                tts.value?.speak("salida del modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak("Modo lectura requiere Premium", TextToSpeech.QUEUE_FLUSH, null, null)
                             }
                         } else {
-                            // Exit assistant mode and enter navigation mode
                             tts.value?.stop()
                             isAssistantMode = false
                             navigationPaused = false
                             isReadingMode = false
                             currentMode = "navigation"
                             chatResponse = ""
-                            tts.value?.speak("modo navegacion activo", TextToSpeech.QUEUE_FLUSH, null, null)
+                            tts.value?.speak("modo navegación activo", TextToSpeech.QUEUE_FLUSH, null, null)
                         }
                     }
                 )

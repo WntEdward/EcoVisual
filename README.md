@@ -11,11 +11,13 @@ Aplicación Android que utiliza inteligencia artificial (Gemini AI) para describ
 -  **Feedback háptico**: Vibraciones para indicar proximidad de obstáculos
 -  **Modos especializados**: Funcion de camara con detalle de entorno
 -  **Interfaz accesible**: Diseñada con principios de accesibilidad desde el inicio
+-  **Port a idioma español**: Cambiado el lenguaje por defecto a español 
+-  **Sistema de Usuarios**: Sistema de inicio y registro de usuarios
 
 ## 📱 Características Principales
 
 - Detección en tiempo real de obstáculos y descripción del entorno
 - Descripciones auditivas detalladas con voces naturales
-- Sistema de comandos por voz
+- Modo de preguntas a la ia sobre el entorno
 - Modos de detalles de entornos
 - Sistema colaborativo de reporte de obstáculos
