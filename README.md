@@ -4,13 +4,16 @@
 
 Aplicación Android que utiliza inteligencia artificial (Gemini AI) para describir el entorno y detectar obstáculos, diseñada específicamente para asistir a personas con discapacidades visuales.
 
-## ✨ Diferencias con el Proyecto Original (NavAIgate)
+##  Diferencias con el Proyecto Original (NavAIgate)
 
-- ✅ **Enfoque en accesibilidad**: Diseñado específicamente para necesidades de usuarios ciegos o con baja visión
-- 🔊 **Sistema de audio mejorado**: Voces más naturales y descriptivas
-- 🖐 **Feedback háptico**: Vibraciones para indicar proximidad de obstáculos
-- ♿ **Modos especializados**: Funcion de camara con detalle de entorno
-- 📱 **Interfaz accesible**: Diseñada con principios de accesibilidad desde el inicio
+
+-  **Enfoque en accesibilidad**: Diseñado específicamente para necesidades de usuarios ciegos o con baja visión
+-  Sistema de audio mejorado: Voces más naturales y descriptivas
+-  Feedback háptico: Vibraciones para indicar proximidad de obstáculos
+-  Modos especializados: Funcion de camara con detalle de entorno
+-  Interfaz accesible: Diseñada con principios de accesibilidad desde el inicio
+-  Port a idioma español: Cambiado el lenguaje por defecto a español
+-  Sistema de Usuarios: Sistema de inicio y registro de usuarios
 
 ## 📱 Características Principales
 
