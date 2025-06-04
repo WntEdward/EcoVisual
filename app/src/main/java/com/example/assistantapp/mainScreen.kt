@@ -1,5 +1,6 @@
 package com.example.assistantapp
 
+import android.content.Context
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -10,14 +11,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import coil.decode.GifDecoder
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -48,56 +42,48 @@ fun MainPage(navController: NavHostController) {
     val context = LocalContext.current
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var tapCount by remember { mutableStateOf(0) }
-    var currentSpeechRate by remember { mutableStateOf(1.0f) }
     val vibrator = context.getSystemService(Vibrator::class.java)
-    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+    val prefs = context.getSharedPreferences("EcoVisualPrefs", Context.MODE_PRIVATE)
+    val isPremium = prefs.getBoolean("isPremium", false)
+    val selectedVoice = prefs.getString("selectedVoice", "es-MX-female-soft") ?: "es-MX-female-soft"
 
     // Initialize TextToSpeech
     DisposableEffect(Unit) {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                val textToSpeech = tts!!
-                // Get the list of available voices
-                val voices = textToSpeech.getVoices()
-
-                // Print all available voices to log for debugging
-                for (voice in voices) {
-                    Log.d("TTS", "Voice: ${voice.name}, Language: ${voice.locale.language}, Country: ${voice.locale.country}")
-                }
-
-                // Find a Spanish male voice
-                var selectedVoice: Voice? = null
-                for (voice in voices) {
-                    if (voice.locale.language == "es" && voice.name.contains("male")) {
-                        selectedVoice = voice
-                        break
+                val voices = tts?.getVoices()
+                var voice: Voice? = null
+                voices?.forEach { v ->
+                    if (v.locale.language == "es" && v.name.contains("male")) {
+                        voice = v
+                        return@forEach
                     }
                 }
-
-                // If a male Spanish voice is found, set it
-                if (selectedVoice != null) {
-                    textToSpeech.setVoice(selectedVoice)
-                    Log.d("TTS", "Selected voice: ${selectedVoice.name}")
+                voice?.let { tts?.setVoice(it) }
+                tts?.setLanguage(Locale("es", "MX"))
+                applyVoice(tts, selectedVoice) // Aplicar la voz seleccionada al iniciar
+                val welcomeMessage = if (isPremium) {
+                    "Bienvenido a EcoVisual Premium. Da un click para instrucciones. " +
+                            "Doble tap para modo detección. Presiona largo para configuración."
                 } else {
-                    Log.d("TTS", "No male Spanish voice found, using default")
+                    "Bienvenido a EcoVisual Gratis. Da un click para instrucciones. " +
+                            "Doble tap para modo detección."
                 }
-
-                // Set language to Spanish Mexico
-                textToSpeech.setLanguage(Locale("es", "MX"))
-
-                // Speak initial message
-                textToSpeech.speak(
-                    "Da un click en cualquier parte de la pantalla para las instrucciones. Manten presionado para la hora",
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    null
-                )
+                tts?.speak(welcomeMessage, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
-
         onDispose {
             tts?.stop()
             tts?.shutdown()
+        }
+    }
+
+    fun applyVoice(tts: TextToSpeech?, voiceId: String?) {
+        when (voiceId) {
+            "es-MX-male-neutral" -> tts?.setPitch(1.0f)
+            "es-MX-female-soft" -> tts?.setPitch(1.2f)
+            "es-MX-male-deep" -> tts?.setPitch(0.8f)
+            "es-MX-female-clear" -> tts?.setPitch(1.4f)
         }
     }
 
@@ -114,16 +100,12 @@ fun MainPage(navController: NavHostController) {
     fun handleSingleTap() {
         playConfirmationTone(1.2f, 1.0f)
         vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-        tts?.speak(
-            "instrucciones de uso " +
-                    "Doble tap a la pantalla para cambiar de modo " +
-                    "en el segundo modo puedes preguntar sobre detalles de lo que hay enfrente " +
-                    "presiona largo la pantalla para saber la hora" +
-                    "Doble click a la pantalla para continuar",
-            TextToSpeech.QUEUE_FLUSH,
-            null,
-            null
-        )
+        val instructions = if (isPremium) {
+            "Instrucciones de uso. Doble tap para modo detección. Presiona largo para configuración."
+        } else {
+            "Instrucciones de uso. Doble tap para modo detección."
+        }
+        tts?.speak(instructions, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
     fun handleDoubleTap() {
@@ -133,36 +115,29 @@ fun MainPage(navController: NavHostController) {
         navController.navigate("blindMode")
     }
 
+    fun handleLongPress() {
+        playConfirmationTone(1.0f, 1.0f)
+        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(100, 50, 100), -1))
+        if (isPremium) {
+            tts?.speak("Accediendo a configuración.", TextToSpeech.QUEUE_FLUSH, null, null)
+            navController.navigate("settingsScreen")
+        } else {
+            tts?.speak("Configuración requiere Premium. Usa david@ecovisual.com.", TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
     LaunchedEffect(tapCount) {
         when (tapCount) {
             1 -> handleSingleTap()
             2 -> handleDoubleTap()
+            3 -> {
+                // Ignoramos el triple tap por ahora para evitar conflictos
+                tapCount = 0
+            }
         }
         if (tapCount > 0) {
-            delay(500)
+            delay(300) // Reducimos el retraso para mejor detección
             tapCount = 0
-        }
-    }
-
-    fun announceTime() {
-        val currentTime = LocalDateTime.now().format(timeFormatter)
-        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(100, 50, 100), -1))
-        tts?.speak("La hora actual es $currentTime", TextToSpeech.QUEUE_FLUSH, null, null)
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            val currentTime = LocalTime.now()
-            val minute = currentTime.minute
-            val hour = currentTime.hour
-
-            if (minute == 0) {
-                tts?.speak("Son las $hour en punto", TextToSpeech.QUEUE_ADD, null, "chime")
-            } else if (minute == 30) {
-                tts?.speak(" $hour y media", TextToSpeech.QUEUE_ADD, null, "chime")
-            }
-
-            delay(60000)
         }
     }
 
@@ -170,11 +145,14 @@ fun MainPage(navController: NavHostController) {
         contentAlignment = Alignment.Center,
         modifier = Modifier.fillMaxSize()
             .background(Color(0xFFF4F4F4))
+            .combinedClickable(
+                onClick = { tapCount++ },
+                onLongClick = { handleLongPress() }
+            )
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(R.drawable.mainscreen)
-                .decoderFactory(GifDecoder.Factory())
                 .crossfade(true)
                 .build(),
             contentDescription = "Animated blind man",
@@ -199,20 +177,8 @@ fun MainPage(navController: NavHostController) {
             contentScale = ContentScale.Fit
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .combinedClickable(
-                    onClick = { tapCount++ },
-                    onLongClick = {
-                        announceTime()
-                        tapCount = 0
-                    }
-                )
-        )
-
         Text(
-            text = "EcoVisual: Aplicacion de deteccion de obstaculos",
+            text = "EcoVisual: Aplicación de detección de obstáculos",
             color = Color.Black,
             textAlign = TextAlign.Center,
             fontSize = 14.sp,

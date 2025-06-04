@@ -11,5 +11,6 @@ fun Navigation(navController: NavHostController) {
         composable("loginScreen") { LoginScreen(navController) }
         composable("mainPage") { MainPage(navController) }
         composable("blindMode") { BlindModeScreen(navController) }
+        composable("settingsScreen") { SettingsScreen(navController) }
     }
 }

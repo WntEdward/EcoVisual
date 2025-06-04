@@ -24,6 +24,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,11 +37,20 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlinx.coroutines.CoroutineScope
 import androidx.compose.runtime.rememberCoroutineScope
 import java.io.File
 import android.content.SharedPreferences
+import androidx.compose.ui.Alignment
 import androidx.navigation.NavHostController
+
+// Función auxiliar para crear un archivo temporal
+fun createTempFile(context: Context): File {
+    val tempFileName = "temp_image_${System.currentTimeMillis()}.jpg"
+    return File(context.cacheDir, tempFileName).apply {
+        if (exists()) delete() // Asegurarse de que no exista un archivo previo
+        createNewFile()
+    }
+}
 
 @Composable
 fun ReadingModeCamera(
@@ -69,7 +79,7 @@ fun ReadingModeCamera(
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
 
-        val file = createTempFile(context.toString())
+        val file = createTempFile(context)
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
         imageCapture.takePicture(
             outputOptions,
@@ -99,9 +109,10 @@ fun BlindModeScreen(navController: NavHostController) {
     val scope = rememberCoroutineScope()
     val prefs = context.getSharedPreferences("EcoVisualPrefs", Context.MODE_PRIVATE)
     val isPremium = prefs.getBoolean("isPremium", false)
+    val selectedVoice = prefs.getString("selectedVoice", "es-MX-female-soft") ?: "es-MX-female-soft"
 
-    val assistantModeVibrationPattern = longArrayOf(0, 200, 100, 200) // Short vibration twice
-    val readingModeVibrationPattern = longArrayOf(0, 500) // Long vibration once
+    val assistantModeVibrationPattern = longArrayOf(0, 200, 100, 200)
+    val readingModeVibrationPattern = longArrayOf(0, 500)
 
     fun triggerVibration(pattern: LongArray) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -111,6 +122,11 @@ fun BlindModeScreen(navController: NavHostController) {
         }
     }
 
+    // Nueva función auxiliar para limpiar texto
+    fun cleanTextForTTS(text: String): String {
+        return text.replace("[!.,:;]".toRegex(), "").trim()
+    }
+
     // Text-to-Speech
     val tts = remember { mutableStateOf<TextToSpeech?>(null) }
     LaunchedEffect(context) {
@@ -118,6 +134,7 @@ fun BlindModeScreen(navController: NavHostController) {
             if (status != TextToSpeech.ERROR) {
                 tts.value?.language = Locale("es", "MX")
                 tts.value?.setSpeechRate(1.5f)
+                applyVoice(tts.value, selectedVoice) // Aplicar la voz seleccionada al iniciar
                 val availableVoices = tts.value?.voices
                 val desiredVoice = availableVoices?.find { voice ->
                     voice.name.contains("female", ignoreCase = true)
@@ -125,7 +142,17 @@ fun BlindModeScreen(navController: NavHostController) {
                 if (desiredVoice != null) {
                     tts.value?.voice = desiredVoice
                 }
+                tts.value?.speak(cleanTextForTTS("Modo navegación activo"), TextToSpeech.QUEUE_FLUSH, null, null)
             }
+        }
+    }
+
+    fun applyVoice(tts: TextToSpeech?, voiceId: String?) {
+        when (voiceId) {
+            "es-MX-male-neutral" -> tts?.setPitch(1.0f)
+            "es-MX-female-soft" -> tts?.setPitch(1.2f)
+            "es-MX-male-deep" -> tts?.setPitch(0.8f)
+            "es-MX-female-clear" -> tts?.setPitch(1.4f)
         }
     }
 
@@ -168,11 +195,11 @@ fun BlindModeScreen(navController: NavHostController) {
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                if (!matches.isNullOrEmpty()) {
+                if (!matches.isNullOrEmpty() && isAssistantMode) {
                     val spokenText = matches[0]
                     scope.launch {
-                        chatResponse = sendMessageToGeminiAI(spokenText, analysisResult)
-                        tts.value?.speak(chatResponse, TextToSpeech.QUEUE_FLUSH, null, null)
+                        chatResponse = sendMessageToGeminiAI(spokenText, "")
+                        tts.value?.speak(cleanTextForTTS(chatResponse), TextToSpeech.QUEUE_FLUSH, null, null)
                     }
                 }
             }
@@ -181,29 +208,41 @@ fun BlindModeScreen(navController: NavHostController) {
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {
-                if (navigationPaused) {
-                    speechRecognizer.startListening(speechIntent)
-                }
-            }
-            override fun onError(error: Int) {
-                if (navigationPaused) {
-                    speechRecognizer.startListening(speechIntent)
-                }
-            }
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {}
             override fun onPartialResults(partialResults: Bundle?) {}
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
     }
 
-    LaunchedEffect(navigationPaused) {
-        if (navigationPaused) {
+    // Controlar el micrófono y TTS al cambiar de modo
+    LaunchedEffect(isAssistantMode) {
+        if (isAssistantMode) {
             isMicActive = true
+            navigationPaused = true
             speechRecognizer.startListening(speechIntent)
+            tts.value?.speak(cleanTextForTTS("Modo asistencia activo Habla para interactuar"), TextToSpeech.QUEUE_FLUSH, null, null)
         } else {
             isMicActive = false
+            navigationPaused = false
             speechRecognizer.stopListening()
+            tts.value?.stop()
             chatResponse = ""
+            if (isReadingMode) {
+                tts.value?.speak(cleanTextForTTS("Modo lectura"), TextToSpeech.QUEUE_FLUSH, null, null)
+            } else {
+                tts.value?.speak(cleanTextForTTS("Modo navegación activo"), TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
+    }
+
+    LaunchedEffect(isReadingMode) {
+        if (isReadingMode && !isAssistantMode) {
+            navigationPaused = true
+            tts.value?.speak(cleanTextForTTS("Modo lectura"), TextToSpeech.QUEUE_FLUSH, null, null)
+        } else if (!isReadingMode && !isAssistantMode) {
+            navigationPaused = false
+            tts.value?.speak(cleanTextForTTS("Modo navegación activo"), TextToSpeech.QUEUE_FLUSH, null, null)
         }
     }
 
@@ -224,20 +263,9 @@ fun BlindModeScreen(navController: NavHostController) {
                         triggerVibration(assistantModeVibrationPattern)
                         if (!isReadingMode) {
                             if (isPremium) {
-                                navigationPaused = !navigationPaused
-                                isAssistantMode = navigationPaused
-                                if (navigationPaused) {
-                                    tts.value?.stop()
-                                    currentMode = "assistant"
-                                    tts.value?.speak("modo asistencia activo", TextToSpeech.QUEUE_FLUSH, null, null)
-                                } else {
-                                    tts.value?.stop()
-                                    currentMode = "navigation"
-                                    chatResponse = ""
-                                    tts.value?.speak("modo asistencia desactivado", TextToSpeech.QUEUE_FLUSH, null, null)
-                                }
+                                isAssistantMode = !isAssistantMode
                             } else {
-                                tts.value?.speak("Modo asistencia requiere Premium", TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak(cleanTextForTTS("Modo asistencia requiere Premium Usa david@ecovisual.com"), TextToSpeech.QUEUE_FLUSH, null, null)
                             }
                         }
                     },
@@ -246,73 +274,66 @@ fun BlindModeScreen(navController: NavHostController) {
                         if (!isAssistantMode) {
                             if (isPremium) {
                                 isReadingMode = !isReadingMode
-                                if (isReadingMode) {
-                                    tts.value?.stop()
-                                    currentMode = "reading"
-                                    navigationPaused = true
-                                    tts.value?.speak("modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
-                                } else {
-                                    tts.value?.stop()
-                                    currentMode = "navigation"
-                                    readingModeResult = ""
-                                    navigationPaused = false
-                                    tts.value?.speak("salida del modo lectura", TextToSpeech.QUEUE_FLUSH, null, null)
-                                }
                             } else {
-                                tts.value?.speak("Modo lectura requiere Premium", TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak(cleanTextForTTS("Modo lectura requiere Premium Usa david@ecovisual.com"), TextToSpeech.QUEUE_FLUSH, null, null)
                             }
                         } else {
-                            tts.value?.stop()
                             isAssistantMode = false
-                            navigationPaused = false
-                            isReadingMode = false
-                            currentMode = "navigation"
+                            tts.value?.stop()
                             chatResponse = ""
-                            tts.value?.speak("modo navegación activo", TextToSpeech.QUEUE_FLUSH, null, null)
+                            tts.value?.speak(cleanTextForTTS("Modo navegación activo"), TextToSpeech.QUEUE_FLUSH, null, null)
                         }
                     }
                 )
             }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isReadingMode) {
-                ReadingModeCamera(
-                    onImageCaptured = { bitmap ->
-                        capturedImage = bitmap
-                        scope.launch {
-                            readingModeResult = ""
-                            sendFrameToGemini2AI(bitmap, { partialResult ->
-                                readingModeResult += partialResult
-                                tts.value?.speak(partialResult, TextToSpeech.QUEUE_ADD, null, null)
-                            }, { error -> /* Handle error */ })
-                        }
-                    },
-                    cameraExecutor = cameraExecutor
-                )
-            } else if (!navigationPaused) {
-                CameraPreviewWithAnalysis { imageProxy ->
-                    val currentTimestamp = System.currentTimeMillis()
-                    if (currentTimestamp - lastProcessedTimestamp >= frameInterval) {
-                        scope.launch {
-                            val bitmap = imageProxy.toBitmap()
-                            if (bitmap != null) {
-                                sendFrameToGeminiAI(bitmap, { partialResult ->
-                                    analysisResult += " $partialResult"
-                                    val newText = analysisResult.substring(lastSpokenIndex)
-                                    tts.value?.speak(newText, TextToSpeech.QUEUE_ADD, null, null)
-                                    lastSpokenIndex = analysisResult.length
+            if (!isAssistantMode) {
+                if (isReadingMode) {
+                    ReadingModeCamera(
+                        onImageCaptured = { bitmap ->
+                            capturedImage = bitmap
+                            scope.launch {
+                                readingModeResult = ""
+                                sendFrameToGemini2AI(bitmap, { partialResult ->
+                                    readingModeResult += partialResult
+                                    tts.value?.speak(cleanTextForTTS(partialResult), TextToSpeech.QUEUE_ADD, null, null)
                                 }, { error -> /* Handle error */ })
-                                lastProcessedTimestamp = currentTimestamp
                             }
+                        },
+                        cameraExecutor = cameraExecutor
+                    )
+                } else if (!navigationPaused) {
+                    CameraPreviewWithAnalysis { imageProxy ->
+                        val currentTimestamp = System.currentTimeMillis()
+                        if (currentTimestamp - lastProcessedTimestamp >= frameInterval) {
+                            scope.launch {
+                                val bitmap = imageProxy.toBitmap()
+                                if (bitmap != null) {
+                                    sendFrameToGeminiAI(bitmap, { partialResult ->
+                                        analysisResult += " $partialResult"
+                                        val newText = analysisResult.substring(lastSpokenIndex)
+                                        tts.value?.speak(cleanTextForTTS(newText), TextToSpeech.QUEUE_ADD, null, null)
+                                        lastSpokenIndex = analysisResult.length
+                                    }, { error -> /* Handle error */ })
+                                    lastProcessedTimestamp = currentTimestamp
+                                }
+                                imageProxy.close()
+                            }
+                        } else {
                             imageProxy.close()
                         }
-                    } else {
-                        imageProxy.close()
                     }
+                }
+            } else {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = "Modo Asistencia Habla para interactuar",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             }
 
-            // Overlay for AI responses
             AIResponseOverlay(
                 currentMode = currentMode,
                 navigationResponse = analysisResult,
