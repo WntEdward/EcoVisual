@@ -7,8 +7,10 @@ import androidx.navigation.compose.composable
 
 @Composable
 fun Navigation(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = "mainPage") {
+    NavHost(navController = navController, startDestination = "loginScreen") {
+        composable("loginScreen") { LoginScreen(navController) }
         composable("mainPage") { MainPage(navController) }
-        composable("blindMode") { BlindModeScreen() }
+        composable("blindMode") { BlindModeScreen(navController) }
+        composable("settingsScreen") { SettingsScreen(navController) }
     }
 }

@@ -9,7 +9,10 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2e175acf-13bf-4d34-b494-09fb39136ba7" name="Changes" comment="mejoras a los 3 modos de blindmode" />
+    <list default="true" id="2e175acf-13bf-4d34-b494-09fb39136ba7" name="Changes" comment="implementacion de mainscreen">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/assistantapp/navigation.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/assistantapp/navigation.kt" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -23,6 +26,13 @@
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
     </projectState>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Kotlin File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
@@ -204,7 +214,23 @@
       <option name="project" value="LOCAL" />
       <updated>1749065052856</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="pestaña de login">
+      <option name="closed" value="true" />
+      <created>1749065205983</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1749065205983</updated>
+    </task>
+    <task id="LOCAL-00007" summary="implementacion de mainscreen">
+      <option name="closed" value="true" />
+      <created>1749065350315</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1749065350315</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -223,7 +249,9 @@
     <MESSAGE value="Modificacion al español" />
     <MESSAGE value="readme cambio" />
     <MESSAGE value="mejoras a los 3 modos de blindmode" />
-    <option name="LAST_COMMIT_MESSAGE" value="mejoras a los 3 modos de blindmode" />
+    <MESSAGE value="pestaña de login" />
+    <MESSAGE value="implementacion de mainscreen" />
+    <option name="LAST_COMMIT_MESSAGE" value="implementacion de mainscreen" />
   </component>
   <component name="play_dynamic_filters_status">
     <option name="appIdToCheckInfo">
