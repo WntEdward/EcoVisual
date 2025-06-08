@@ -7,6 +7,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
@@ -37,7 +41,6 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.compose.runtime.rememberCoroutineScope
 import java.io.File
 import android.content.SharedPreferences
 import androidx.compose.ui.Alignment
@@ -47,7 +50,7 @@ import androidx.navigation.NavHostController
 fun createTempFile(context: Context): File {
     val tempFileName = "temp_image_${System.currentTimeMillis()}.jpg"
     return File(context.cacheDir, tempFileName).apply {
-        if (exists()) delete() // Asegurarse de que no exista un archivo previo
+        if (exists()) delete()
         createNewFile()
     }
 }
@@ -89,14 +92,12 @@ fun ReadingModeCamera(
                     val bitmap = BitmapFactory.decodeFile(file.absolutePath)
                     onImageCaptured(bitmap)
                 }
-
                 override fun onError(exception: ImageCaptureException) {
                     exception.printStackTrace()
                 }
             }
         )
     }
-
     AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
 }
 
@@ -110,38 +111,63 @@ fun BlindModeScreen(navController: NavHostController) {
     val prefs = context.getSharedPreferences("EcoVisualPrefs", Context.MODE_PRIVATE)
     val isPremium = prefs.getBoolean("isPremium", false)
     val selectedVoice = prefs.getString("selectedVoice", "es-MX-female-soft") ?: "es-MX-female-soft"
+    val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    var fallDetected by remember { mutableStateOf(false) }
 
-    val assistantModeVibrationPattern = longArrayOf(0, 200, 100, 200)
-    val readingModeVibrationPattern = longArrayOf(0, 500)
+    // --- MOVER estas declaraciones ANTES del listener ---
+    val tts = remember { mutableStateOf<TextToSpeech?>(null) }
+
+    fun cleanTextForTTS(text: String): String {
+        return text.replace("[!.,:;]".toRegex(), "").trim()
+    }
+    // --------------------------------------------------------
+
+    // Sensor Listener para detectar caídas
+    val sensorListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
+                val acceleration = Math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+                if (acceleration > 15) {
+                    fallDetected = true
+                    tts.value?.speak(
+                        cleanTextForTTS("Caída detectada Enviando alerta"),
+                        TextToSpeech.QUEUE_FLUSH,
+                        null,
+                        null
+                    )
+                    simulateAlert(context, prefs)
+                }
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
+    DisposableEffect(Unit) {
+        sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        onDispose {
+            sensorManager.unregisterListener(sensorListener)
+        }
+    }
 
     fun triggerVibration(pattern: LongArray) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
         } else {
+            @Suppress("DEPRECATION")
             vibrator.vibrate(pattern, -1)
         }
     }
 
-    // Nueva función auxiliar para limpiar texto
-    fun cleanTextForTTS(text: String): String {
-        return text.replace("[!.,:;]".toRegex(), "").trim()
-    }
-
-    // Text-to-Speech
-    val tts = remember { mutableStateOf<TextToSpeech?>(null) }
     LaunchedEffect(context) {
         tts.value = TextToSpeech(context) { status ->
             if (status != TextToSpeech.ERROR) {
                 tts.value?.language = Locale("es", "MX")
                 tts.value?.setSpeechRate(1.5f)
-                applyVoice(tts.value, selectedVoice) // Aplicar la voz seleccionada al iniciar
-                val availableVoices = tts.value?.voices
-                val desiredVoice = availableVoices?.find { voice ->
-                    voice.name.contains("female", ignoreCase = true)
-                }
-                if (desiredVoice != null) {
-                    tts.value?.voice = desiredVoice
-                }
+                applyVoice(tts.value, selectedVoice)
                 tts.value?.speak(cleanTextForTTS("Modo navegación activo"), TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
@@ -158,16 +184,10 @@ fun BlindModeScreen(navController: NavHostController) {
 
     var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    var hasPermission by remember {
+    val hasPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.RECORD_AUDIO
-                    ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -203,7 +223,6 @@ fun BlindModeScreen(navController: NavHostController) {
                     }
                 }
             }
-
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
@@ -215,7 +234,6 @@ fun BlindModeScreen(navController: NavHostController) {
         })
     }
 
-    // Controlar el micrófono y TTS al cambiar de modo
     LaunchedEffect(isAssistantMode) {
         if (isAssistantMode) {
             isMicActive = true
@@ -248,7 +266,7 @@ fun BlindModeScreen(navController: NavHostController) {
 
     if (!hasPermission) {
         ActivityCompat.requestPermissions(
-            (context as Activity),
+            context as Activity,
             arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
             1
         )
@@ -260,22 +278,32 @@ fun BlindModeScreen(navController: NavHostController) {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        triggerVibration(assistantModeVibrationPattern)
+                        triggerVibration(longArrayOf(0,200,100,200))
                         if (!isReadingMode) {
                             if (isPremium) {
                                 isAssistantMode = !isAssistantMode
                             } else {
-                                tts.value?.speak(cleanTextForTTS("Modo asistencia requiere Premium Usa david@ecovisual.com"), TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak(
+                                    cleanTextForTTS("Modo asistencia requiere Premium Usa david@ecovisual.com"),
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
                             }
                         }
                     },
                     onLongPress = {
-                        triggerVibration(readingModeVibrationPattern)
+                        triggerVibration(longArrayOf(0,500))
                         if (!isAssistantMode) {
                             if (isPremium) {
                                 isReadingMode = !isReadingMode
                             } else {
-                                tts.value?.speak(cleanTextForTTS("Modo lectura requiere Premium Usa david@ecovisual.com"), TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts.value?.speak(
+                                    cleanTextForTTS("Modo lectura requiere Premium Usa david@ecovisual.com"),
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
                             }
                         } else {
                             isAssistantMode = false
@@ -289,51 +317,50 @@ fun BlindModeScreen(navController: NavHostController) {
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (!isAssistantMode) {
-                if (isReadingMode) {
-                    ReadingModeCamera(
-                        onImageCaptured = { bitmap ->
-                            capturedImage = bitmap
-                            scope.launch {
-                                readingModeResult = ""
-                                sendFrameToGemini2AI(bitmap, { partialResult ->
-                                    readingModeResult += partialResult
-                                    tts.value?.speak(cleanTextForTTS(partialResult), TextToSpeech.QUEUE_ADD, null, null)
-                                }, { error -> /* Handle error */ })
-                            }
-                        },
-                        cameraExecutor = cameraExecutor
-                    )
-                } else if (!navigationPaused) {
-                    CameraPreviewWithAnalysis { imageProxy ->
-                        val currentTimestamp = System.currentTimeMillis()
-                        if (currentTimestamp - lastProcessedTimestamp >= frameInterval) {
-                            scope.launch {
-                                val bitmap = imageProxy.toBitmap()
-                                if (bitmap != null) {
-                                    sendFrameToGeminiAI(bitmap, { partialResult ->
-                                        analysisResult += " $partialResult"
-                                        val newText = analysisResult.substring(lastSpokenIndex)
-                                        tts.value?.speak(cleanTextForTTS(newText), TextToSpeech.QUEUE_ADD, null, null)
-                                        lastSpokenIndex = analysisResult.length
-                                    }, { error -> /* Handle error */ })
-                                    lastProcessedTimestamp = currentTimestamp
+                when {
+                    isReadingMode -> {
+                        ReadingModeCamera(
+                            onImageCaptured = { bitmap ->
+                                capturedImage = bitmap
+                                scope.launch {
+                                    readingModeResult = ""
+                                    sendFrameToGemini2AI(bitmap, { partialResult ->
+                                        readingModeResult += partialResult
+                                        tts.value?.speak(cleanTextForTTS(partialResult), TextToSpeech.QUEUE_ADD, null, null)
+                                    }, { /* error */ })
                                 }
+                            },
+                            cameraExecutor = cameraExecutor
+                        )
+                    }
+                    !navigationPaused -> {
+                        CameraPreviewWithAnalysis { imageProxy ->
+                            val currentTimestamp = System.currentTimeMillis()
+                            if (currentTimestamp - lastProcessedTimestamp >= frameInterval) {
+                                scope.launch {
+                                    val bitmap = imageProxy.toBitmap()
+                                    if (bitmap != null) {
+                                        sendFrameToGeminiAI(bitmap, { partialResult ->
+                                            analysisResult += " $partialResult"
+                                            val newText = analysisResult.substring(lastSpokenIndex)
+                                            tts.value?.speak(cleanTextForTTS(newText), TextToSpeech.QUEUE_ADD, null, null)
+                                            lastSpokenIndex = analysisResult.length
+                                        }, { /* error */ })
+                                        lastProcessedTimestamp = currentTimestamp
+                                    }
+                                    imageProxy.close()
+                                }
+                            } else {
                                 imageProxy.close()
                             }
-                        } else {
-                            imageProxy.close()
                         }
                     }
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = "Modo Asistencia Habla para interactuar",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Text("Modo Asistencia: Habla para interactuar", modifier = Modifier.align(Alignment.Center))
                 }
             }
-
             AIResponseOverlay(
                 currentMode = currentMode,
                 navigationResponse = analysisResult,

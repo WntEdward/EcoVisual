@@ -105,5 +105,9 @@ dependencies {
 
     // Google Cloud Speech
     implementation("com.google.cloud:google-cloud-speech:2.2.1")
-    implementation("com.google.guava:guava:31.0.1-android") // Add Guava explicitly
+    implementation("com.google.guava:guava:31.0.1-android")
+
+    implementation ("com.google.code.gson:gson:2.10.1")
+
+    //implementacion con la bd
 }
