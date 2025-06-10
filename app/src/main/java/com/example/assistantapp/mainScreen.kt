@@ -6,6 +6,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -63,10 +64,9 @@ fun MainPage(navController: NavHostController) {
                 val y = event.values[1]
                 val z = event.values[2]
                 val acceleration = Math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
-                if (acceleration > 15) { // Umbral básico para detectar caída
+                if (acceleration > 15) {
                     fallDetected = true
                     tts?.speak("Caída detectada. Enviando alerta.", TextToSpeech.QUEUE_FLUSH, null, null)
-                    // Simulación de alerta (en un entorno real, enviaría un mensaje)
                     simulateAlert(context, prefs)
                 }
             }
@@ -103,7 +103,7 @@ fun MainPage(navController: NavHostController) {
                             "Doble tap para modo detección. Presiona largo para configuración."
                 } else {
                     "Bienvenido a EcoVisual Gratis. Da un click para instrucciones. " +
-                            "Doble tap para modo detección."
+                            "Doble tap para modo detección. Presiona largo para continuar a la compra."
                 }
                 tts?.speak(welcomeMessage, TextToSpeech.QUEUE_FLUSH, null, null)
             }
@@ -139,7 +139,7 @@ fun MainPage(navController: NavHostController) {
         val instructions = if (isPremium) {
             "Instrucciones de uso. Doble tap para modo detección. Presiona largo para configuración."
         } else {
-            "Instrucciones de uso. Doble tap para modo detección."
+            "Instrucciones de uso. Doble tap para modo detección. Presiona largo para continuar a la compra."
         }
         tts?.speak(instructions, TextToSpeech.QUEUE_FLUSH, null, null)
     }
@@ -158,7 +158,8 @@ fun MainPage(navController: NavHostController) {
             tts?.speak("Accediendo a configuración.", TextToSpeech.QUEUE_FLUSH, null, null)
             navController.navigate("settingsScreen")
         } else {
-            tts?.speak("Configuración requiere Premium. Usa david@ecovisual.com.", TextToSpeech.QUEUE_FLUSH, null, null)
+            tts?.speak("Mantén presionado para continuar a la compra de Premium.", TextToSpeech.QUEUE_FLUSH, null, null)
+            // No navega, solo muestra mensaje
         }
     }
 
@@ -232,6 +233,5 @@ fun applyVoice(tts: TextToSpeech?, selectedVoice: String) {
 fun simulateAlert(context: Context, prefs: SharedPreferences) {
     val emergencyContactName = prefs.getString("emergencyContactName", "Contacto de Emergencia")
     val emergencyContactNumber = prefs.getString("emergencyContactNumber", "1234567890")
-    // En un entorno real, aquí se enviaría un SMS o notificación
     Log.d("FallDetection", "Alerta simulada enviada a $emergencyContactName ($emergencyContactNumber)")
 }
