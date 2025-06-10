@@ -24,7 +24,6 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -43,6 +42,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.io.File
 import android.content.SharedPreferences
+import android.util.Log
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.ui.Alignment
 import androidx.navigation.NavHostController
 
@@ -115,13 +116,12 @@ fun BlindModeScreen(navController: NavHostController) {
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     var fallDetected by remember { mutableStateOf(false) }
 
-    // --- MOVER estas declaraciones ANTES del listener ---
+    // Inicialización de TTS antes del listener
     val tts = remember { mutableStateOf<TextToSpeech?>(null) }
 
     fun cleanTextForTTS(text: String): String {
         return text.replace("[!.,:;]".toRegex(), "").trim()
     }
-    // --------------------------------------------------------
 
     // Sensor Listener para detectar caídas
     val sensorListener = object : SensorEventListener {
@@ -131,7 +131,7 @@ fun BlindModeScreen(navController: NavHostController) {
                 val y = event.values[1]
                 val z = event.values[2]
                 val acceleration = Math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
-                if (acceleration > 15) {
+                if (acceleration > 15 && tts.value != null) {
                     fallDetected = true
                     tts.value?.speak(
                         cleanTextForTTS("Caída detectada Enviando alerta"),
@@ -162,6 +162,7 @@ fun BlindModeScreen(navController: NavHostController) {
         }
     }
 
+    // Inicialización de TTS
     LaunchedEffect(context) {
         tts.value = TextToSpeech(context) { status ->
             if (status != TextToSpeech.ERROR) {
@@ -195,7 +196,6 @@ fun BlindModeScreen(navController: NavHostController) {
     var isAssistantMode by remember { mutableStateOf(false) }
     var isReadingMode by remember { mutableStateOf(false) }
     var navigationPaused by remember { mutableStateOf(false) }
-    var isMicActive by remember { mutableStateOf(false) }
     var chatResponse by remember { mutableStateOf("") }
     var readingModeResult by remember { mutableStateOf("") }
     var analysisResult by remember { mutableStateOf("") }
@@ -203,16 +203,19 @@ fun BlindModeScreen(navController: NavHostController) {
     var lastProcessedTimestamp by remember { mutableStateOf(0L) }
     val frameInterval = 12000
 
+    // Configuración del reconocedor de voz
     val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
     val speechIntent = remember {
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true) // Para resultados parciales
         }
     }
 
-    LaunchedEffect(Unit) {
-        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+    // Listener de reconocimiento de voz
+    DisposableEffect(Unit) {
+        val listener = object : RecognitionListener {
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 if (!matches.isNullOrEmpty() && isAssistantMode) {
@@ -227,21 +230,36 @@ fun BlindModeScreen(navController: NavHostController) {
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-            override fun onError(error: Int) {}
+            override fun onEndOfSpeech() {
+                if (isAssistantMode) {
+                    speechRecognizer.startListening(speechIntent) // Reinicia la escucha
+                }
+            }
+            override fun onError(error: Int) {
+                Log.e("SpeechRecognizer", "Error: $error")
+                if (isAssistantMode) {
+                    speechRecognizer.startListening(speechIntent) // Intenta reiniciar en caso de error
+                }
+            }
             override fun onPartialResults(partialResults: Bundle?) {}
             override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
+        }
+        speechRecognizer.setRecognitionListener(listener)
+        onDispose {
+            speechRecognizer.stopListening()
+            speechRecognizer.destroy()
+        }
     }
 
+    // Control del micrófono basado en isAssistantMode
     LaunchedEffect(isAssistantMode) {
-        if (isAssistantMode) {
-            isMicActive = true
+        if (isAssistantMode && hasPermission) {
+            var isMicActive = true
             navigationPaused = true
             speechRecognizer.startListening(speechIntent)
-            tts.value?.speak(cleanTextForTTS("Modo asistencia activo Habla para interactuar"), TextToSpeech.QUEUE_FLUSH, null, null)
+            tts.value?.speak(cleanTextForTTS("Modo asistencia activo. Habla para interactuar."), TextToSpeech.QUEUE_FLUSH, null, null)
         } else {
-            isMicActive = false
+            var isMicActive = false
             navigationPaused = false
             speechRecognizer.stopListening()
             tts.value?.stop()
@@ -278,13 +296,13 @@ fun BlindModeScreen(navController: NavHostController) {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        triggerVibration(longArrayOf(0,200,100,200))
+                        triggerVibration(longArrayOf(0, 200, 100, 200))
                         if (!isReadingMode) {
                             if (isPremium) {
                                 isAssistantMode = !isAssistantMode
                             } else {
                                 tts.value?.speak(
-                                    cleanTextForTTS("Modo asistencia requiere Premium "),
+                                    cleanTextForTTS("Modo asistencia requiere Premium"),
                                     TextToSpeech.QUEUE_FLUSH,
                                     null,
                                     null
@@ -293,7 +311,7 @@ fun BlindModeScreen(navController: NavHostController) {
                         }
                     },
                     onLongPress = {
-                        triggerVibration(longArrayOf(0,500))
+                        triggerVibration(longArrayOf(0, 500))
                         if (!isAssistantMode) {
                             if (isPremium) {
                                 isReadingMode = !isReadingMode
