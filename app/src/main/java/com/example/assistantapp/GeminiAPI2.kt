@@ -32,7 +32,10 @@ val ReadModel = GenerativeModel(
         SafetySetting(HarmCategory.SEXUALLY_EXPLICIT, BlockThreshold.NONE),
         SafetySetting(HarmCategory.DANGEROUS_CONTENT, BlockThreshold.NONE),
     ),
-    systemInstruction = content { text("(el propsito te lo escribire en ingles pero quiero que lo que tu realizaes o digas lo hagas en español mexico): your user is a blind person.\nfrom the input the the user about the think and then read the whole text from the image like from the book sign boards and others.") },
+    systemInstruction = content { text("""
+        El usuario es una persona con discapacidad visual.
+        A partir de la entrada del usuario sobre lo que desea saber, lee todo el texto de la imagen, como de libros, letreros y otros.
+    """) },
 
     )
 

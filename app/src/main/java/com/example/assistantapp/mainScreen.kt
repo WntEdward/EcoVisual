@@ -1,6 +1,12 @@
 package com.example.assistantapp
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -46,6 +52,36 @@ fun MainPage(navController: NavHostController) {
     val prefs = context.getSharedPreferences("EcoVisualPrefs", Context.MODE_PRIVATE)
     val isPremium = prefs.getBoolean("isPremium", false)
     val selectedVoice = prefs.getString("selectedVoice", "es-MX-female-soft") ?: "es-MX-female-soft"
+    val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    var fallDetected by remember { mutableStateOf(false) }
+
+    // Sensor Listener para detectar caídas
+    val sensorListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
+                val acceleration = Math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+                if (acceleration > 15) {
+                    fallDetected = true
+                    tts?.speak("Caída detectada. Enviando alerta.", TextToSpeech.QUEUE_FLUSH, null, null)
+                    simulateAlert(context, prefs)
+                }
+            }
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
+    // Registrar el sensor
+    DisposableEffect(Unit) {
+        sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        onDispose {
+            sensorManager.unregisterListener(sensorListener)
+        }
+    }
 
     // Initialize TextToSpeech
     DisposableEffect(Unit) {
@@ -61,13 +97,13 @@ fun MainPage(navController: NavHostController) {
                 }
                 voice?.let { tts?.setVoice(it) }
                 tts?.setLanguage(Locale("es", "MX"))
-                applyVoice(tts, selectedVoice) // Aplicar la voz seleccionada al iniciar
+                applyVoice(tts, selectedVoice)
                 val welcomeMessage = if (isPremium) {
                     "Bienvenido a EcoVisual Premium. Da un click para instrucciones. " +
                             "Doble tap para modo detección. Presiona largo para configuración."
                 } else {
                     "Bienvenido a EcoVisual Gratis. Da un click para instrucciones. " +
-                            "Doble tap para modo detección."
+                            "Doble tap para modo detección. Presiona largo para continuar a la compra."
                 }
                 tts?.speak(welcomeMessage, TextToSpeech.QUEUE_FLUSH, null, null)
             }
@@ -103,7 +139,7 @@ fun MainPage(navController: NavHostController) {
         val instructions = if (isPremium) {
             "Instrucciones de uso. Doble tap para modo detección. Presiona largo para configuración."
         } else {
-            "Instrucciones de uso. Doble tap para modo detección."
+            "Instrucciones de uso. Doble tap para modo detección. Presiona largo para continuar a la compra."
         }
         tts?.speak(instructions, TextToSpeech.QUEUE_FLUSH, null, null)
     }
@@ -122,7 +158,7 @@ fun MainPage(navController: NavHostController) {
             tts?.speak("Accediendo a configuración.", TextToSpeech.QUEUE_FLUSH, null, null)
             navController.navigate("settingsScreen")
         } else {
-            tts?.speak("Configuración requiere Premium. Usa david@ecovisual.com.", TextToSpeech.QUEUE_FLUSH, null, null)
+            tts?.speak("Mantén presionado para continuar a la compra de Premium.", TextToSpeech.QUEUE_FLUSH, null, null)
         }
     }
 
@@ -131,12 +167,11 @@ fun MainPage(navController: NavHostController) {
             1 -> handleSingleTap()
             2 -> handleDoubleTap()
             3 -> {
-                // Ignoramos el triple tap por ahora para evitar conflictos
                 tapCount = 0
             }
         }
         if (tapCount > 0) {
-            delay(300) // Reducimos el retraso para mejor detección
+            delay(300)
             tapCount = 0
         }
     }
@@ -187,4 +222,15 @@ fun MainPage(navController: NavHostController) {
                 .padding(bottom = 16.dp)
         )
     }
+}
+
+fun applyVoice(tts: TextToSpeech?, selectedVoice: String) {
+
+}
+
+// Simulación de alerta
+fun simulateAlert(context: Context, prefs: SharedPreferences) {
+    val emergencyContactName = prefs.getString("emergencyContactName", "Contacto de Emergencia")
+    val emergencyContactNumber = prefs.getString("emergencyContactNumber", "1234567890")
+    Log.d("FallDetection", "Alerta enviada a $emergencyContactName ($emergencyContactNumber)")
 }
