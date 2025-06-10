@@ -284,7 +284,7 @@ fun BlindModeScreen(navController: NavHostController) {
                                 isAssistantMode = !isAssistantMode
                             } else {
                                 tts.value?.speak(
-                                    cleanTextForTTS("Modo asistencia requiere Premium Usa david@ecovisual.com"),
+                                    cleanTextForTTS("Modo asistencia requiere Premium "),
                                     TextToSpeech.QUEUE_FLUSH,
                                     null,
                                     null
@@ -299,7 +299,7 @@ fun BlindModeScreen(navController: NavHostController) {
                                 isReadingMode = !isReadingMode
                             } else {
                                 tts.value?.speak(
-                                    cleanTextForTTS("Modo lectura requiere Premium Usa david@ecovisual.com"),
+                                    cleanTextForTTS("Modo lectura requiere Premium"),
                                     TextToSpeech.QUEUE_FLUSH,
                                     null,
                                     null

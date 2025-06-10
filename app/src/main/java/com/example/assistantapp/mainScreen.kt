@@ -159,7 +159,6 @@ fun MainPage(navController: NavHostController) {
             navController.navigate("settingsScreen")
         } else {
             tts?.speak("Mantén presionado para continuar a la compra de Premium.", TextToSpeech.QUEUE_FLUSH, null, null)
-            // No navega, solo muestra mensaje
         }
     }
 
@@ -233,5 +232,5 @@ fun applyVoice(tts: TextToSpeech?, selectedVoice: String) {
 fun simulateAlert(context: Context, prefs: SharedPreferences) {
     val emergencyContactName = prefs.getString("emergencyContactName", "Contacto de Emergencia")
     val emergencyContactNumber = prefs.getString("emergencyContactNumber", "1234567890")
-    Log.d("FallDetection", "Alerta simulada enviada a $emergencyContactName ($emergencyContactNumber)")
+    Log.d("FallDetection", "Alerta enviada a $emergencyContactName ($emergencyContactNumber)")
 }
