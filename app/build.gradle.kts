@@ -80,7 +80,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    // CameraX
+    // Camara
     implementation("androidx.camera:camera-core:1.3.4")
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")
@@ -109,5 +109,4 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.10.1")
 
-    //implementacion con la bd
 }
