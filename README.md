@@ -18,10 +18,12 @@ Aplicación Android que utiliza inteligencia artificial (Gemini AI) para describ
 -  **Contactos de emergergencia**: Implementacion de colocar maximo 5 contactos de emergencia por si surge una caida
 -  **Cambio de tonos de voz**: poder cambiar entre diferentes tonos de voz a eleccion del usuario
 
-## 📱 Características Principales
+##  Características Principales
 
 - Detección en tiempo real de obstáculos y descripción del entorno
 - Descripciones auditivas detalladas con voces naturales
 - Modo de preguntas a la ia sobre el entorno
-- Modos de detalles de entornos
+- Modos de detalles de entornos y lectura
 - Sistema colaborativo de reporte de obstáculos
+- Deteccion de caidas
+  
